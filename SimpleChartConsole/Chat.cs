@@ -4,7 +4,7 @@ using System.Text;
 
 namespace SimpleChartConsole;
 
-public class Chart
+public class Chat
 {
     public void Server(string ip, int port)
     {
@@ -19,9 +19,17 @@ public class Chart
             {
                 byte[] buffer = udpClient.Receive(ref localEndPoint);
                 string encoded = Encoding.UTF8.GetString(buffer);
+                
+                if (encoded == "exit")
+                {
+                    
+                    Console.WriteLine("Сервер: выход");
+                    
+                    break;
+                }
 
                 Message? message = Message.GetMessage(encoded);
-                
+
                 Console.WriteLine("Сервер: получено сообщение - " + message);
                 udpClient.Send(Encoding.UTF8.GetBytes("Сообщение получено"), localEndPoint);
             }
@@ -49,7 +57,16 @@ public class Chart
             {
                 continue;
             }
-            
+
+            if (input == "exit")
+            {
+                Console.WriteLine("Клиент: выход");
+                
+                udpClient.Send(Encoding.UTF8.GetBytes("exit"), localEndPoint);
+                
+                break;
+            }
+
             Message message = new Message(nick, input);
             string messageJson = message.ToJson();
             byte[] bytes = Encoding.UTF8.GetBytes(messageJson);

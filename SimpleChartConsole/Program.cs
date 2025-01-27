@@ -8,10 +8,10 @@ Console.WriteLine(Message.GetMessage(message.ToJson()));
 
 new Thread(() =>
 {
-    new Chart().Server("127.0.0.1", 7777);
+    new Chat().Server("127.0.0.1", 7777);
 }).Start();
 
 new Thread(() =>
 {
-    new Chart().Client("127.0.0.1", 7777, "Ivan");
+    new Chat().Client("127.0.0.1", 7777, "Ivan");
 }).Start();
