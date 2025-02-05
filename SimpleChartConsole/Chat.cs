@@ -10,10 +10,11 @@ public class Chat
     {
         IPEndPoint localEndPoint = new IPEndPoint(IPAddress.Parse(ip), 0);
         UdpClient udpClient = new UdpClient(port);
+        CancellationTokenSource cancelTokenSource = new CancellationTokenSource();
         
         Console.WriteLine("Сервер: запущен и ожидает сообщения от клиента");
 
-        while (true)
+        while (cancelTokenSource.IsCancellationRequested == false)
         {
             try
             {
@@ -25,6 +26,7 @@ public class Chat
                     
                     Console.WriteLine("Сервер: выход");
                     
+                    cancelTokenSource.Cancel();
                     break;
                 }
 
@@ -37,7 +39,6 @@ public class Chat
             {
                 Console.WriteLine(e.Message);
             }
-
         }
     }
     
@@ -45,10 +46,11 @@ public class Chat
     {
         IPEndPoint localEndPoint = new IPEndPoint(IPAddress.Parse(ip), port);
         UdpClient udpClient = new UdpClient();
+        CancellationTokenSource cancelTokenSource = new CancellationTokenSource();
         
         Console.WriteLine("Клиент: запущен");
         
-        while (true)
+        while (cancelTokenSource.IsCancellationRequested == false)
         {
             Console.WriteLine("Клиент: введите сообщение");
             string? input = Console.ReadLine();
@@ -64,6 +66,7 @@ public class Chat
                 
                 udpClient.Send(Encoding.UTF8.GetBytes("exit"), localEndPoint);
                 
+                cancelTokenSource.Cancel();
                 break;
             }
 
