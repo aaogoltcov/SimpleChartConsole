@@ -1,18 +1,22 @@
 using System.Text.Json;
 
-namespace SimpleChartConsole;
+namespace Library;
 
 public class Message
 {
-    public string Nick;
+    public User User;
     public DateTime DateTime;
     public string Content;
+    public User FromUser;
+    public User ToUser;
 
-    public Message(string nick, string content)
+    public Message(User user, string content, User toUser)
     {
-        Nick = nick;
+        User = user;
         Content = content;
         DateTime = DateTime.Now;
+        FromUser = User;
+        ToUser = toUser;
     }
 
     public string ToJson()
@@ -27,6 +31,6 @@ public class Message
 
     public override string ToString()
     {
-        return $"{this.Nick} ({DateTime}): {Content}";
+        return $"от {this.FromUser} для {this.ToUser} в {this.DateTime}: {Content}";
     }
 }
