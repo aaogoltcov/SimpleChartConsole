@@ -6,7 +6,21 @@ var toName = Environment.GetEnvironmentVariable("TO_NAME");
 var client = new Task(() =>
 {
     if (toName != null && fromName != null)
-        new Client().Run("127.0.0.1", 7777, new User(fromName), new User(toName));
+    {
+        var toUser = new User
+        {
+            Nick = toName
+        };
+
+        var fromUser = new User
+        {
+            Nick = fromName
+        };
+
+        new Client().Run("127.0.0.1", 7777, fromUser, toUser);
+    }
+
+
 });
 
 client.Start();

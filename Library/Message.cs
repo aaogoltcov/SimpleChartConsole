@@ -1,36 +1,37 @@
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Library;
 
 public class Message
 {
-    public User User;
-    public DateTime DateTime;
-    public string Content;
-    public User FromUser;
-    public User ToUser;
-
-    public Message(User user, string content, User toUser)
-    {
-        User = user;
-        Content = content;
-        DateTime = DateTime.Now;
-        FromUser = User;
-        ToUser = toUser;
-    }
+    public int Id  { get; set; }
+    public DateTime DateTime  { get; set; }
+    public string Content  { get; set; }
+    public bool IsReceived  { get; set; }
+    public int? FromUserId  { get; set; }
+    public int? ToUserId  { get; set; }
+    public MessageType Type { get; set; }
+    
+    [InverseProperty(nameof(User.MessagesFromUser))]
+    public virtual User? FromUser { get; set; }
+    
+    [InverseProperty(nameof(User.MessagesToUser))]
+    public virtual User? ToUser { get; set; }
 
     public string ToJson()
     {
-        return JsonSerializer.Serialize(this, new JsonSerializerOptions() { IncludeFields = true });
+        return JsonSerializer.Serialize(this, new JsonSerializerOptions() { IncludeFields = true, ReferenceHandler = ReferenceHandler.Preserve });
     }
 
     public static Message? GetMessage(string json)
     {
-        return JsonSerializer.Deserialize<Message>(json, new JsonSerializerOptions() { IncludeFields = true });
+        return JsonSerializer.Deserialize<Message>(json, new JsonSerializerOptions() { IncludeFields = true, ReferenceHandler = ReferenceHandler.Preserve });
     }
 
     public override string ToString()
     {
-        return $"от {this.FromUser} для {this.ToUser} в {this.DateTime}: {Content}";
+        return $"от {this.FromUser} для {this.ToUser} в {this.DateTime}: {Content}, тип: {this.Type}";
     }
 }

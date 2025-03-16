@@ -54,7 +54,14 @@ public class Client : IClient
                     break;
                 }
 
-                Message message = new Message(user, input, toUser);
+                Message message = new Message
+                {
+                    FromUser = user,
+                    ToUser = toUser,
+                    Content = input,
+                    DateTime = DateTime.Now.ToUniversalTime(),
+                    Type = MessageType.Message
+                };
                 string messageJson = message.ToJson();
                 byte[] bytes = Encoding.UTF8.GetBytes(messageJson);
                 udpClient.Send(bytes, localEndPoint);
@@ -71,15 +78,22 @@ public class Client : IClient
             {
                 byte[] buffer = udpClient.Receive(ref localEndPoint);
                 string encoded = Encoding.UTF8.GetString(buffer);
-
+                
                 try
                 {
                     Message? serverMessage = Message.GetMessage(encoded);
-
+                    
                     if (serverMessage != null)
                     {
+                        var messageEntity = serverMessage;
+                        messageEntity.Type = MessageType.Confirmation;
+                        
+                        string messageJson = messageEntity.ToJson();
+                        byte[] bytes = Encoding.UTF8.GetBytes(messageJson);
+                        udpClient.Send(bytes, localEndPoint);
+                        
                         Console.WriteLine(
-                            $"Сообщение от пользователя {serverMessage.ToUser.Nick}: {serverMessage.Content}");
+                            $"Сообщение от пользователя {messageEntity.ToUser.Nick}: {messageEntity.Content}");
                     }
                 }
                 catch (Exception e)
