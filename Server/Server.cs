@@ -5,14 +5,13 @@ using Library;
 
 namespace ServerChat;
 
-public class Server : IServer
+public class Server(Context ctx) : IServer
 {
     private readonly Dictionary<string, IPEndPoint> _clients = new();
-    private UdpClient udpClient;
+    private UdpClient _udpClient;
 
     private void RegisterUser(User fromUser, IPEndPoint fromUserEndPoint)
     {
-        using var ctx = new Context();
         var fromUserNick = fromUser?.Nick;
 
         if (fromUserNick == null) return;
@@ -32,7 +31,7 @@ public class Server : IServer
             {
                 string messageJson = message.ToJson();
                 byte[] bytes = Encoding.UTF8.GetBytes(messageJson);
-                udpClient.Send(bytes, fromUserEndPoint);
+                _udpClient.Send(bytes, fromUserEndPoint);
             }
 
             return;
@@ -49,7 +48,6 @@ public class Server : IServer
 
     private void ConfirmMessageReceived(int? id)
     {
-        using var ctx = new Context();
         var message = ctx.Messages.FirstOrDefault(x => x.Id == id);
 
         if (message != null)
@@ -61,7 +59,6 @@ public class Server : IServer
 
     private void RelyMessage(Message message, IPEndPoint localEndPoint)
     {
-        using var ctx = new Context();
         var messageEntity = new Message
         {
             FromUserId = ctx.Users.FirstOrDefault(x => x.Nick == message.FromUser.Nick).Id,
@@ -77,12 +74,12 @@ public class Server : IServer
         {
             string messageJson = messageEntity.ToJson();
             byte[] bytes = Encoding.UTF8.GetBytes(messageJson);
-            udpClient.Send(bytes, endPoint);
-            udpClient.Send(Encoding.UTF8.GetBytes("Сообщение отправлено!"), localEndPoint);
+            _udpClient.Send(bytes, endPoint);
+            _udpClient.Send(Encoding.UTF8.GetBytes("Сообщение отправлено!"), localEndPoint);
         }
         else
         {
-            udpClient.Send(Encoding.UTF8.GetBytes("Сообщение не отправлено!"), localEndPoint);
+            _udpClient.Send(Encoding.UTF8.GetBytes("Сообщение не отправлено!"), localEndPoint);
         }
     }
 
@@ -91,7 +88,7 @@ public class Server : IServer
         IPEndPoint localEndPoint = new IPEndPoint(IPAddress.Parse(ip), 0);
         CancellationTokenSource cancelTokenSource = new CancellationTokenSource();
         
-        udpClient = new UdpClient(port);
+        _udpClient = new UdpClient(port);
 
         Console.WriteLine("Сервер запущен и ожидает сообщения от клиента.");
 
@@ -99,7 +96,7 @@ public class Server : IServer
         {
             try
             {
-                byte[] buffer = udpClient.Receive(ref localEndPoint);
+                byte[] buffer = _udpClient.Receive(ref localEndPoint);
                 string encoded = Encoding.UTF8.GetString(buffer);
 
                 if (encoded == "exit")

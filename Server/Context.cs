@@ -3,18 +3,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ServerChat;
 
-public class Context : DbContext
+public class Context(DbContextOptions<Context> options) : DbContext(options)
 {
     public virtual DbSet<User> Users { get; set; }
     public virtual DbSet<Message> Messages { get; set; }
-
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        optionsBuilder
-            .LogTo(Console.WriteLine)
-            .UseLazyLoadingProxies()
-            .UseNpgsql("Host=localhost;Port=5432;Database=chatdb;Username=postgres;Password=postgres");
-    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
