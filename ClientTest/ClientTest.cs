@@ -1,7 +1,3 @@
-using System.Net;
-using System.Net.Sockets;
-using System.Reflection;
-using ClientChat;
 using Library;
 using Moq;
 
@@ -15,12 +11,12 @@ public class ClientTest
     {
         var client = new Mock<IClient>();
 
-        client.Object.SendMessageHandler(It.IsAny<UdpClient>(), It.IsAny<IPEndPoint>(),
+        client.Object.SendMessageHandler(
             It.IsAny<CancellationTokenSource>(), It.IsAny<User>(), It.IsAny<User>());
 
         client.Verify(
             x =>
-                x.SendMessageHandler(It.IsAny<UdpClient>(), It.IsAny<IPEndPoint>(),
+                x.SendMessageHandler(
                     It.IsAny<CancellationTokenSource>(), It.IsAny<User>(), It.IsAny<User>()), Times.Once);
     }
 
@@ -29,11 +25,11 @@ public class ClientTest
     {
         var client = new Mock<IClient>();
 
-        client.Object.ReceiveMessageHandler(It.IsAny<UdpClient>(), It.IsAny<IPEndPoint>(),
+        client.Object.ReceiveMessageHandler(
             It.IsAny<CancellationTokenSource>());
 
         client.Verify(
-            x => x.ReceiveMessageHandler(It.IsAny<UdpClient>(), It.IsAny<IPEndPoint>(),
+            x => x.ReceiveMessageHandler(
                 It.IsAny<CancellationTokenSource>()), Times.Once);
     }
 }

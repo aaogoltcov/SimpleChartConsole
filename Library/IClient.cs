@@ -7,9 +7,9 @@ public interface IClient
 {
     public void Run(string ip, int port, User user, User toUser);
 
-    public void SendMessageHandler(UdpClient udpClient, IPEndPoint localEndPoint,
+    public void SendMessageHandler(
         CancellationTokenSource cancelTokenSource, User user, User toUser);
 
-    public void ReceiveMessageHandler(UdpClient udpClient, IPEndPoint localEndPoint,
+    public void ReceiveMessageHandler(
         CancellationTokenSource cancelTokenSource);
 }

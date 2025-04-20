@@ -1,8 +1,10 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
+using System.Text;
 using Library;
 using Microsoft.EntityFrameworkCore;
+using NetMQ;
 using ServerChat;
 
 namespace ServerTest;
@@ -12,8 +14,7 @@ public class ServerTest
 {
     private Context _ctx;
     private Server? _server;
-    private UdpClient _udpClient;
-    private IPEndPoint _localEndPoint;
+    private NetMQFrame? _client;
 
     [SetUp]
     public void Setup()
@@ -23,8 +24,7 @@ public class ServerTest
             .Options;
         _ctx = new Context(options);
         _server = new Server(_ctx);
-        _udpClient = new UdpClient(7777);
-        _localEndPoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 0);
+        _client = new NetMQFrame(Encoding.UTF8.GetBytes(""));
     }
 
     [TearDown]
@@ -32,8 +32,7 @@ public class ServerTest
     {
         _ctx.Dispose();
         _server = null;
-        _udpClient.Close();
-        _udpClient.Close();
+        _client = null;
     }
 
     [Test]
@@ -47,9 +46,9 @@ public class ServerTest
         var registerUserMethod =
             _server?.GetType().GetMethod("RegisterUser", BindingFlags.NonPublic | BindingFlags.Instance);
 
-        if (registerUserMethod != null)
+        if (registerUserMethod != null && _client != null)
         {
-            registerUserMethod.Invoke(_server, new object[] { testUser, _localEndPoint });
+            registerUserMethod.Invoke(_server, new object[] { testUser, _client });
         }
 
         var firstContextUser = _ctx.Users.FirstOrDefault();

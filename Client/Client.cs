@@ -2,25 +2,29 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using Library;
+using NetMQ;
+using NetMQ.Sockets;
 
 namespace ClientChat;
 
 public class Client : IClient
 {
+    private readonly DealerSocket _dealerSocket = new DealerSocket();
+
     public void Run(string ip, int port, User user, User toUser)
     {
-        IPEndPoint localEndPoint = new IPEndPoint(IPAddress.Parse(ip), port);
-        UdpClient udpClient = new UdpClient();
+        _dealerSocket.Connect("tcp://" + ip + ":" + port);
+
         CancellationTokenSource cancelTokenSource = new CancellationTokenSource();
 
         string userJson = user.ToJson();
         byte[] userBytes = Encoding.UTF8.GetBytes(userJson);
-        udpClient.Send(userBytes, localEndPoint);
+        _dealerSocket.SendFrame(userBytes);
 
         Console.WriteLine($"Здравсвуйте, {user}!");
 
-        var inputTask = new Task(() => SendMessageHandler(udpClient, localEndPoint, cancelTokenSource, user, toUser));
-        var listenerTask = new Task(() => ReceiveMessageHandler(udpClient, localEndPoint, cancelTokenSource));
+        var inputTask = new Task(() => SendMessageHandler(cancelTokenSource, user, toUser));
+        var listenerTask = new Task(() => ReceiveMessageHandler(cancelTokenSource));
 
         inputTask.Start();
         listenerTask.Start();
@@ -29,7 +33,7 @@ public class Client : IClient
         listenerTask.Wait(cancelTokenSource.Token);
     }
 
-    public void SendMessageHandler(UdpClient udpClient, IPEndPoint localEndPoint,
+    public void SendMessageHandler(
         CancellationTokenSource cancelTokenSource, User user, User toUser)
     {
         while (cancelTokenSource.IsCancellationRequested == false)
@@ -46,7 +50,7 @@ public class Client : IClient
             {
                 Console.WriteLine("Клиент: выход");
 
-                udpClient.Send(Encoding.UTF8.GetBytes("exit"), localEndPoint);
+                _dealerSocket.SendFrame(Encoding.UTF8.GetBytes("exit"));
 
                 cancelTokenSource.Cancel();
                 break;
@@ -62,17 +66,16 @@ public class Client : IClient
             };
             string messageJson = message.ToJson();
             byte[] bytes = Encoding.UTF8.GetBytes(messageJson);
-            udpClient.Send(bytes, localEndPoint);
+            _dealerSocket.SendFrame(bytes);
         }
     }
 
-    public void ReceiveMessageHandler(UdpClient udpClient, IPEndPoint localEndPoint,
+    public void ReceiveMessageHandler(
         CancellationTokenSource cancelTokenSource)
     {
         while (cancelTokenSource.IsCancellationRequested == false)
         {
-            byte[] buffer = udpClient.Receive(ref localEndPoint);
-            string encoded = Encoding.UTF8.GetString(buffer);
+            string encoded = _dealerSocket.ReceiveFrameString();
 
             try
             {
@@ -85,7 +88,7 @@ public class Client : IClient
 
                     string messageJson = messageEntity.ToJson();
                     byte[] bytes = Encoding.UTF8.GetBytes(messageJson);
-                    udpClient.Send(bytes, localEndPoint);
+                    _dealerSocket.SendFrame(bytes);
 
                     Console.WriteLine(
                         $"Сообщение от пользователя {messageEntity.ToUser.Nick}: {messageEntity.Content}");

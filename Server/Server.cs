@@ -1,16 +1,16 @@
 using System.Net;
-using System.Net.Sockets;
 using System.Text;
 using Library;
+using NetMQ;
 
 namespace ServerChat;
 
 public class Server(Context ctx) : IServer
 {
-    private readonly Dictionary<string, IPEndPoint> _clients = new();
-    private UdpClient _udpClient;
+    private readonly Dictionary<string, NetMQFrame> _clients = new();
+    private readonly RouterSocketAdapter _routerSocket = new RouterSocketAdapter();
 
-    private void RegisterUser(User fromUser, IPEndPoint fromUserEndPoint)
+    private void RegisterUser(User fromUser,  NetMQFrame client)
     {
         var fromUserNick = fromUser?.Nick;
 
@@ -18,8 +18,8 @@ public class Server(Context ctx) : IServer
 
         var connectedUser = ctx.Users.FirstOrDefault(user => user.Nick == fromUserNick);
         
-        _clients[fromUserNick] = fromUserEndPoint;
-        Console.WriteLine($"Подключился пользователь {fromUser}: {fromUserEndPoint}.");
+        _clients[fromUserNick] = client;
+        Console.WriteLine($"Подключился пользователь {fromUser}: {client}.");
 
         if (connectedUser != null)
         {
@@ -31,7 +31,8 @@ public class Server(Context ctx) : IServer
             {
                 string messageJson = message.ToJson();
                 byte[] bytes = Encoding.UTF8.GetBytes(messageJson);
-                _udpClient.Send(bytes, fromUserEndPoint);
+
+                _routerSocket.SendClientMessage(client, bytes);
             }
 
             return;
@@ -57,7 +58,7 @@ public class Server(Context ctx) : IServer
         }
     }
 
-    private void RelyMessage(Message message, IPEndPoint localEndPoint)
+    private void RelyMessage(Message message, NetMQFrame client)
     {
         var messageEntity = new Message
         {
@@ -70,16 +71,19 @@ public class Server(Context ctx) : IServer
         ctx.Messages.Add(messageEntity);
         ctx.SaveChanges();
         
-        if (_clients.TryGetValue(messageEntity.ToUser.Nick, out var endPoint))
+        
+        
+        if (_clients.TryGetValue(messageEntity.ToUser.Nick, out var endClient))
         {
             string messageJson = messageEntity.ToJson();
             byte[] bytes = Encoding.UTF8.GetBytes(messageJson);
-            _udpClient.Send(bytes, endPoint);
-            _udpClient.Send(Encoding.UTF8.GetBytes("Сообщение отправлено!"), localEndPoint);
+            
+            _routerSocket.SendClientMessage(endClient, bytes);
+            _routerSocket.SendClientMessage(client, Encoding.UTF8.GetBytes("Сообщение отправлено!"));
         }
         else
         {
-            _udpClient.Send(Encoding.UTF8.GetBytes("Сообщение не отправлено!"), localEndPoint);
+            _routerSocket.SendClientMessage(client, Encoding.UTF8.GetBytes("Сообщение не отправлено!"));
         }
     }
 
@@ -88,7 +92,7 @@ public class Server(Context ctx) : IServer
         IPEndPoint localEndPoint = new IPEndPoint(IPAddress.Parse(ip), 0);
         CancellationTokenSource cancelTokenSource = new CancellationTokenSource();
         
-        _udpClient = new UdpClient(port);
+        _routerSocket.Bind("tcp://*:" + port);
 
         Console.WriteLine("Сервер запущен и ожидает сообщения от клиента.");
 
@@ -96,10 +100,11 @@ public class Server(Context ctx) : IServer
         {
             try
             {
-                byte[] buffer = _udpClient.Receive(ref localEndPoint);
-                string encoded = Encoding.UTF8.GetString(buffer);
+                var msg = _routerSocket.ReceiveMultipartMessage();
+                var client = msg.First;
+                var clientMessage = msg.Last.ConvertToString();
 
-                if (encoded == "exit")
+                if (clientMessage == "exit")
                 {
                     Console.WriteLine("Сервер: выход");
 
@@ -108,16 +113,16 @@ public class Server(Context ctx) : IServer
                     break;
                 }
 
-                User? user = User.GetUser(encoded);
+                User? user = User.GetUser(clientMessage);
 
                 if (user?.Nick != null)
                 {
-                    RegisterUser(user, localEndPoint);
+                    RegisterUser(user, client);
                 }
 
                 if (user?.Nick == null)
                 {
-                    Message? message = Message.GetMessage(encoded);
+                    Message? message = Message.GetMessage(clientMessage);
 
                     Console.WriteLine($"Сообщение {message}");
                     
@@ -130,7 +135,7 @@ public class Server(Context ctx) : IServer
 
                                 break;
                             case MessageType.Message:
-                                RelyMessage(message, localEndPoint);
+                                RelyMessage(message, client);
                             
                                 break;
                         }
